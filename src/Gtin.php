@@ -22,10 +22,6 @@ class Gtin
      */
     public $prefix;
     /**
-     * @var boolean
-     */
-    public $restricted;
-    /**
      * @var string
      */
     public $region;
@@ -49,7 +45,11 @@ class Gtin
      * @var array
      */
     protected $stdPrefixCollection;
-    
+    /**
+     * @var boolean
+     */
+    protected $validPrefix = false;
+
     /**
      * Class constructor
      * @param string $gtin
@@ -76,7 +76,7 @@ class Gtin
         $this->checkDigit = $this->getCheckDigit($gtin);
         $this->type = $this->getType($gtin);
     }
-    
+
     /**
      * Static instantiation off class
      * @param string $gtin
@@ -86,10 +86,11 @@ class Gtin
     {
         return new static($gtin);
     }
-    
+
     /**
      * Validate GTIN 8, 12, 13, or 14 with check digit
-     * @return boolean
+     * @return bool
+     * @throws \InvalidArgumentException
      */
     public function isValid()
     {
@@ -112,7 +113,7 @@ class Gtin
         }
         return true;
     }
-    
+
     /**
      * Extract region prefix
      * @param string $gtin
@@ -128,7 +129,7 @@ class Gtin
                 return substr($gtin, 0, 3);
         }
     }
-    
+
     /**
      * Identify GTIN type GTIN 8,12,13,14 or NONE
      * @param string $gtin
@@ -152,16 +153,16 @@ class Gtin
         }
         return 0;
     }
-    
+
     /**
      * Validate prefix region
      * @return boolean
      */
     protected function isPrefixValid()
     {
-        return !$this->restricted;
+        return $this->validPrefix;
     }
-    
+
     /**
      * Recover region from prefix code
      * @param string $prefix
@@ -173,16 +174,16 @@ class Gtin
         foreach ($this->stdPrefixCollection as $std) {
             $nI = (int) $std->nIni;
             $nF = (int) $std->nFim;
-            $this->restricted = (boolean) $std->restricted;
+            $this->validPrefix = true;
             $region = $std->region;
             if ($pf >= $nI && $pf <= $nF) {
                 return $region;
             }
         }
-        $this->restricted = true;
+        $this->validPrefix = false;
         return "Not Found";
     }
-    
+
     /**
      * Calculate check digit from GTIN 8, 12, 13 or 14
      * @param string $gtin
@@ -192,7 +193,7 @@ class Gtin
     {
         $len = (int) strlen($gtin);
         $gtin = substr($gtin, 0, $len-1);
-        $gtin = str_pad($gtin, '15', '0', STR_PAD_LEFT);
+        $gtin = str_pad($gtin, 15, '0', STR_PAD_LEFT);
         $total = 0;
         for ($pos=0; $pos<15; $pos++) {
             $total += ((($pos+1) % 2) * 2 + 1) * $gtin[$pos];
